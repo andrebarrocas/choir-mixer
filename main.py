@@ -1,5 +1,3 @@
-# backend/main.py
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -12,8 +10,17 @@ import soundfile as sf
 from tempfile import mkdtemp
 import shutil
 import uuid
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Use ["http://localhost:5173"] if you want to be strict
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class SongRequest(BaseModel):
     original_url: str
