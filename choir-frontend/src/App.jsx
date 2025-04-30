@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import './App.css';
 
 function App() {
   const [originalUrl, setOriginalUrl] = useState('');
@@ -36,46 +37,38 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'Arial', maxWidth: '600px', margin: 'auto' }}>
-      <h1>🎵 Choir Mixer</h1>
-      <p>Enter the original song and cover song YouTube URLs</p>
+    <div className="App">
+      <div className="container">
+        <h1>🎵 Choir Mixer</h1>
+        <p>Enter the original song and cover song YouTube URLs</p>
 
-      <div>
         <input
           type="text"
           placeholder="Original YouTube URL"
           value={originalUrl}
           onChange={(e) => setOriginalUrl(e.target.value)}
-          style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem' }}
         />
         <textarea
           placeholder="Cover YouTube URLs (comma-separated)"
           value={coverUrls}
           onChange={(e) => setCoverUrls(e.target.value)}
-          style={{ width: '100%', height: '100px', padding: '0.5rem' }}
         />
+
+        <button onClick={handleGenerate} disabled={loading}>
+          {loading ? 'Mixing...' : 'Generate Choir Mix'}
+        </button>
+
+        {resultPath && (
+          <div className="result">
+            <h3>Result:</h3>
+            <audio
+              controls
+              src={`http://localhost:8000/get_audio/?path=${encodeURIComponent(resultPath)}`}
+            ></audio>
+            <p className="path">📁 Path: {resultPath}</p>
+          </div>
+        )}
       </div>
-
-      <button
-        onClick={handleGenerate}
-        style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', fontSize: '1rem' }}
-        disabled={loading}
-      >
-        {loading ? 'Mixing...' : 'Generate Choir Mix'}
-      </button>
-
-      {resultPath && (
-        <div style={{ marginTop: '2rem' }}>
-          <h3>Result:</h3>
-          <audio
-            controls
-            src={`http://localhost:8000/get_audio/?path=${encodeURIComponent(resultPath)}`}
-          ></audio>
-          <p style={{ wordWrap: 'break-word' }}>
-            📁 Path: {resultPath}
-          </p>
-        </div>
-      )}
     </div>
   );
 }
