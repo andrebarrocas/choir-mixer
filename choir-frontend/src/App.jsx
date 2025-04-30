@@ -36,7 +36,7 @@ function App() {
   };
 
   return (
-    <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
+    <div style={{ padding: '2rem', fontFamily: 'Arial', maxWidth: '600px', margin: 'auto' }}>
       <h1>🎵 Choir Mixer</h1>
       <p>Enter the original song and cover song YouTube URLs</p>
 
@@ -58,7 +58,8 @@ function App() {
 
       <button
         onClick={handleGenerate}
-        style={{ marginTop: '1rem', padding: '0.75rem 1.5rem' }}
+        style={{ marginTop: '1rem', padding: '0.75rem 1.5rem', fontSize: '1rem' }}
+        disabled={loading}
       >
         {loading ? 'Mixing...' : 'Generate Choir Mix'}
       </button>
@@ -66,8 +67,13 @@ function App() {
       {resultPath && (
         <div style={{ marginTop: '2rem' }}>
           <h3>Result:</h3>
-          <audio controls src={resultPath}></audio>
-          <p>📁 Path: {resultPath}</p>
+          <audio
+            controls
+            src={`http://localhost:8000/get_audio/?path=${encodeURIComponent(resultPath)}`}
+          ></audio>
+          <p style={{ wordWrap: 'break-word' }}>
+            📁 Path: {resultPath}
+          </p>
         </div>
       )}
     </div>

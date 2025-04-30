@@ -11,12 +11,14 @@ from tempfile import mkdtemp
 import shutil
 import uuid
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
+# Enable CORS for local frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Use ["http://localhost:5173"] if you want to be strict
+    allow_origins=["*"],  # Consider using ["http://localhost:5173"] if restricting
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -59,20 +61,16 @@ def align_and_mix(original_path, cover_paths):
         y_cover, _ = librosa.load(cover_path, sr=sr)
         y_cover = librosa.to_mono(y_cover)
 
-        # Normalize cover to prevent volume imbalance
         if np.max(np.abs(y_cover)) > 0:
             y_cover = y_cover / np.max(np.abs(y_cover))
 
-        # Pad or trim cover to match original's length
         if len(y_cover) > len(y_orig):
             y_cover = y_cover[:len(y_orig)]
         elif len(y_cover) < len(y_orig):
             y_cover = np.pad(y_cover, (0, len(y_orig) - len(y_cover)))
 
-        # Add to the mix
         mix += y_cover
 
-    # Final normalization
     mix = mix / np.max(np.abs(mix))
     out_path = os.path.join(mkdtemp(), "choir_mix.wav")
     print(f"[INFO] Saving mixed audio to: {out_path}")
@@ -103,10 +101,15 @@ def generate_choir(req: SongRequest):
         output_path = align_and_mix(original_path, cover_paths)
         print(f"[INFO] Choir mix completed: {output_path}")
         return {"result_path": output_path}
-
     finally:
         print(f"[INFO] Cleaning up temporary files at: {tmp_dir}")
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+@app.get("/get_audio/")
+def get_audio(path: str):
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="File not found.")
+    return FileResponse(path, media_type="audio/wav", filename="choir_mix.wav")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
