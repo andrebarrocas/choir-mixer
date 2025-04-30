@@ -7,4 +7,6 @@ brew install ffmpeg
 
 uvicorn main:app --reload
 
-brew install ffmpeg
+access http://127.0.0.1:8000/docs
+
+
