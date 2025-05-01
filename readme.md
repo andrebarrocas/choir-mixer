@@ -52,10 +52,15 @@ uvicorn main:app --reload
 ```
 
 2. **Run the React frontend**:
+   
 ```bash
 cd choir-frontend
 npm install
 npm start
+```
+
+```
+npm run dev
 ```
 
 ### Testing the Application
