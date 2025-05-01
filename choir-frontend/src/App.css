@@ -1,3 +1,12 @@
+:root {
+  --glow-color-1: #0f2027;
+  --glow-color-2: #203a43;
+  --glow-color-3: #2c5364;
+  --glow-color-4: #1e3c72;
+  --glow-color-5: #3a6073;
+  --glow-color: var(--glow-color-1);
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -5,13 +14,21 @@ html, body, #root {
   font-family: 'Segoe UI', sans-serif;
   background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #1e3c72, #3a6073);
   background-size: 400% 400%;
-  animation: gradientShift 6s ease infinite;
+  animation: gradientShift 6s ease infinite, glowShift 6s ease infinite;
 }
 
 @keyframes gradientShift {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
+}
+
+@keyframes glowShift {
+  0%   { --glow-color: var(--glow-color-1); }
+  25%  { --glow-color: var(--glow-color-2); }
+  50%  { --glow-color: var(--glow-color-3); }
+  75%  { --glow-color: var(--glow-color-4); }
+  100% { --glow-color: var(--glow-color-5); }
 }
 
 .App {
@@ -98,4 +115,30 @@ textarea {
   font-size: 0.85rem;
   margin-top: 0.5rem;
   color: #ccc;
+}
+.futuristic-mode {
+  position: relative;
+  border-radius: 16px;
+  padding: 1rem;
+  margin-top: 2rem;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Glowing border synced with gradient */
+.futuristic-mode::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  right: -4px;
+  bottom: -4px;
+  background: linear-gradient(-45deg, #0f2027, #203a43, #2c5364, #1e3c72, #3a6073);
+  background-size: 400% 400%;
+  animation: gradientShift 6s ease infinite;
+  filter: blur(16px);
+  z-index: -1;
+  border-radius: 20px;
+  opacity: 0.7;
 }

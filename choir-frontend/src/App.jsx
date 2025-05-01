@@ -9,6 +9,7 @@ function App() {
   const [resultPath, setResultPath] = useState('');
   const [loading, setLoading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [musicStarted, setMusicStarted] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -100,11 +101,12 @@ function App() {
         </div>
 
         {resultPath && (
-          <div className="result">
-            <h3>Result:</h3>
+          <div className={`result ${musicStarted ? 'futuristic-mode' : ''}`}>
             <audio
               controls
               src={`http://localhost:8000/get_audio/?path=${encodeURIComponent(resultPath)}`}
+              onPlay={() => setMusicStarted(true)}
+              onPause={() => setMusicStarted(false)}
             ></audio>
             <p className="path">📁 Path: {resultPath}</p>
           </div>
