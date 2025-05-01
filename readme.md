@@ -56,7 +56,6 @@ uvicorn main:app --reload
 ```bash
 cd choir-frontend
 npm install
-npm start
 ```
 
 ```

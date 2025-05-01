@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from typing import List, Optional
-import uvicorn
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import subprocess
 import os
 import librosa
@@ -9,22 +9,20 @@ import soundfile as sf
 from tempfile import mkdtemp
 import shutil
 import uuid
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 
 app = FastAPI()
 
 # Enable CORS for local frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Consider specifying allowed origins in production
+    allow_origins=["*"],  # For production, specify allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 def download_audio(url, output_dir):
-    out_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
+    out_path = os.path.join(output_dir, f"{uuid.uuid4()}.%(ext)s")
     command = [
         'yt-dlp', url, '-x',
         '--audio-format', 'wav',
@@ -34,9 +32,12 @@ def download_audio(url, output_dir):
     try:
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print(result.stdout.decode())
-        if os.path.exists(out_path):
-            print(f"[INFO] Audio downloaded: {out_path}")
-            return out_path
+
+        # Resolve actual output file
+        expected_file = out_path.replace('%(ext)s', 'wav')
+        if os.path.exists(expected_file):
+            print(f"[INFO] Audio downloaded: {expected_file}")
+            return expected_file
         else:
             print(f"[ERROR] Audio not created for URL: {url}")
             return None
@@ -73,17 +74,22 @@ def align_and_mix(original_path, cover_paths):
     return out_path
 
 @app.post("/generate_choir/")
-async def generate_choir(
-    original_url: Optional[str] = Form(None),
-    cover_urls: Optional[str] = Form(None),
-    original_file: Optional[UploadFile] = File(None),
-    cover_files: Optional[List[UploadFile]] = File(None)
-):
+async def generate_choir(request: Request):
     print("[INFO] Received request to generate choir")
     tmp_dir = mkdtemp()
     print(f"[INFO] Created temp directory: {tmp_dir}")
     try:
-        # Handle original song
+        form = await request.form()
+
+        # Extract text fields
+        original_url = form.get("original_url")
+        cover_urls = form.get("cover_urls")
+
+        # Extract file fields
+        original_file = form.get("original_file")
+        cover_files = form.getlist("cover_files")
+
+        # Handle original
         if original_url:
             original_path = download_audio(original_url, tmp_dir)
             if not original_path:
@@ -95,7 +101,7 @@ async def generate_choir(
         else:
             raise HTTPException(status_code=400, detail="Original song not provided.")
 
-        # Handle cover songs
+        # Handle covers
         cover_paths = []
         if cover_urls:
             for url in cover_urls.split(','):
@@ -104,21 +110,20 @@ async def generate_choir(
                     path = download_audio(url, tmp_dir)
                     if path:
                         cover_paths.append(path)
-                    else:
-                        print(f"[WARNING] Skipped failed cover: {url}")
-        if cover_files:
-            for file in cover_files:
-                path = os.path.join(tmp_dir, f"cover_{uuid.uuid4()}.wav")
-                with open(path, "wb") as f:
-                    f.write(await file.read())
-                cover_paths.append(path)
+
+        for file in cover_files:
+            path = os.path.join(tmp_dir, f"cover_{uuid.uuid4()}.wav")
+            with open(path, "wb") as f:
+                f.write(await file.read())
+            cover_paths.append(path)
 
         if not cover_paths:
-            raise HTTPException(status_code=400, detail="No valid cover songs were provided.")
+            raise HTTPException(status_code=400, detail="No valid cover songs provided.")
 
         output_path = align_and_mix(original_path, cover_paths)
         print(f"[INFO] Choir mix completed: {output_path}")
         return {"result_path": output_path}
+
     finally:
         print(f"[INFO] Cleaning up temporary files at: {tmp_dir}")
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -130,4 +135,5 @@ def get_audio(path: str):
     return FileResponse(path, media_type="audio/wav", filename="choir_mix.wav")
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
