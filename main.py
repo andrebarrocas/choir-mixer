@@ -21,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load Whisper model once
-whisper_model = whisper.load_model("base")  # Change to "medium" or "large" for better accuracy
+# Load Whisper model
+whisper_model = whisper.load_model("base") 
 
 def download_audio(url, output_dir):
     out_path = os.path.join(output_dir, f"{uuid.uuid4()}.%(ext)s")
