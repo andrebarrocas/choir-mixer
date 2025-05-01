@@ -59,6 +59,8 @@ def align_and_mix(original_path, cover_paths):
     y_orig, sr = librosa.load(original_path, sr=None)
     y_orig = librosa.to_mono(y_orig)
     y_orig = trim_to_first_onset(y_orig, sr)
+
+    env_orig = librosa.onset.onset_strength(y=y_orig, sr=sr)
     mix = np.copy(y_orig)
 
     for cover_path in cover_paths:
@@ -67,13 +69,25 @@ def align_and_mix(original_path, cover_paths):
         y_cover = librosa.to_mono(y_cover)
         y_cover = trim_to_first_onset(y_cover, sr)
 
+        env_cover = librosa.onset.onset_strength(y=y_cover, sr=sr)
+        correlation = np.correlate(env_orig, env_cover, mode='full')
+        lag = np.argmax(correlation) - len(env_cover)
+
+        sample_shift = lag * 512  # 512 is default hop_length for onset_strength
+        print(f"[INFO] Aligning with lag: {lag}, sample shift: {sample_shift}")
+
+        if sample_shift > 0:
+            y_cover = np.pad(y_cover, (sample_shift, 0))
+        elif sample_shift < 0:
+            y_cover = y_cover[-sample_shift:]
+
         if np.max(np.abs(y_cover)) > 0:
             y_cover = y_cover / np.max(np.abs(y_cover))
 
-        if len(y_cover) > len(y_orig):
-            y_cover = y_cover[:len(y_orig)]
-        elif len(y_cover) < len(y_orig):
-            y_cover = np.pad(y_cover, (0, len(y_orig) - len(y_cover)))
+        if len(y_cover) > len(mix):
+            y_cover = y_cover[:len(mix)]
+        elif len(y_cover) < len(mix):
+            y_cover = np.pad(y_cover, (0, len(mix) - len(y_cover)))
 
         mix += y_cover
 
