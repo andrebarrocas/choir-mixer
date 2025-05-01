@@ -4,22 +4,27 @@ import './App.css';
 function App() {
   const [originalUrl, setOriginalUrl] = useState('');
   const [coverUrls, setCoverUrls] = useState('');
+  const [originalFile, setOriginalFile] = useState(null);
+  const [coverFiles, setCoverFiles] = useState([]);
   const [resultPath, setResultPath] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
     setResultPath('');
     try {
+      const formData = new FormData();
+      if (originalUrl) formData.append('original_url', originalUrl);
+      if (coverUrls) formData.append('cover_urls', coverUrls);
+      if (originalFile) formData.append('original_file', originalFile);
+      for (let i = 0; i < coverFiles.length; i++) {
+        formData.append('cover_files', coverFiles[i]);
+      }
+
       const response = await fetch('http://localhost:8000/generate_choir/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          original_url: originalUrl,
-          cover_urls: coverUrls.split(',').map(url => url.trim())
-        })
+        body: formData
       });
 
       const data = await response.json();
@@ -40,7 +45,7 @@ function App() {
     <div className="App">
       <div className="container">
         <h1>🎵 Choir Mixer</h1>
-        <p>Enter the original song and cover song YouTube URLs</p>
+        <p>Enter YouTube URLs or upload songs manually</p>
 
         <input
           type="text"
@@ -54,9 +59,45 @@ function App() {
           onChange={(e) => setCoverUrls(e.target.value)}
         />
 
-        <button onClick={handleGenerate} disabled={loading}>
-          {loading ? 'Mixing...' : 'Generate Choir Mix'}
-        </button>
+        {showUpload && (
+          <div className="upload-section" style={{ marginBottom: '1rem' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.25rem' }}>Upload Original Song:</label>
+              <input
+                type="file"
+                accept="audio/*"
+                onChange={(e) => setOriginalFile(e.target.files[0])}
+              />
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem' }}>Upload Cover Songs:</label>
+              <input
+                type="file"
+                accept="audio/*"
+                multiple
+                onChange={(e) => setCoverFiles(Array.from(e.target.files))}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="button-group">
+          <button
+            className="upload-btn"
+            onClick={() => setShowUpload(!showUpload)}
+          >
+            {showUpload ? 'Hide Manual Uploads' : 'Upload Songs Manually'}
+          </button>
+
+          <button
+            className="mix-btn"
+            onClick={handleGenerate}
+            disabled={loading}
+          >
+            {loading ? 'Mixing...' : 'Generate Choir Mix'}
+          </button>
+        </div>
 
         {resultPath && (
           <div className="result">

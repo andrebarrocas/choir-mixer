@@ -48,22 +48,43 @@ textarea {
   min-height: 80px;
 }
 
-button {
-  padding: 0.75rem 2rem;
-  background: #00b4d8;
+.button-group {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.button-group button {
+  flex: 1;
+  max-width: 200px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
   border: none;
   border-radius: 8px;
-  color: white;
-  font-size: 1rem;
   cursor: pointer;
   transition: background 0.3s ease;
 }
 
-button:hover {
+.upload-btn {
+  background: #555;
+  color: white;
+}
+
+.upload-btn:hover {
+  background: #666;
+}
+
+.mix-btn {
+  background: #00b4d8;
+  color: white;
+}
+
+.mix-btn:hover {
   background: #0096c7;
 }
 
-button:disabled {
+.mix-btn:disabled {
   background: #555;
   cursor: not-allowed;
 }

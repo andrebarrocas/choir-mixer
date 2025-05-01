@@ -1,6 +1,5 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import List
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from typing import List, Optional
 import uvicorn
 import subprocess
 import os
@@ -18,15 +17,11 @@ app = FastAPI()
 # Enable CORS for local frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Consider using ["http://localhost:5173"] if restricting
+    allow_origins=["*"],  # Consider specifying allowed origins in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class SongRequest(BaseModel):
-    original_url: str
-    cover_urls: List[str]
 
 def download_audio(url, output_dir):
     out_path = os.path.join(output_dir, f"{uuid.uuid4()}.wav")
@@ -78,25 +73,48 @@ def align_and_mix(original_path, cover_paths):
     return out_path
 
 @app.post("/generate_choir/")
-def generate_choir(req: SongRequest):
+async def generate_choir(
+    original_url: Optional[str] = Form(None),
+    cover_urls: Optional[str] = Form(None),
+    original_file: Optional[UploadFile] = File(None),
+    cover_files: Optional[List[UploadFile]] = File(None)
+):
     print("[INFO] Received request to generate choir")
     tmp_dir = mkdtemp()
     print(f"[INFO] Created temp directory: {tmp_dir}")
     try:
-        original_path = download_audio(req.original_url, tmp_dir)
-        if not original_path:
-            raise HTTPException(status_code=400, detail="Failed to download original song.")
+        # Handle original song
+        if original_url:
+            original_path = download_audio(original_url, tmp_dir)
+            if not original_path:
+                raise HTTPException(status_code=400, detail="Failed to download original song.")
+        elif original_file:
+            original_path = os.path.join(tmp_dir, f"original_{uuid.uuid4()}.wav")
+            with open(original_path, "wb") as f:
+                f.write(await original_file.read())
+        else:
+            raise HTTPException(status_code=400, detail="Original song not provided.")
 
+        # Handle cover songs
         cover_paths = []
-        for url in req.cover_urls:
-            path = download_audio(url, tmp_dir)
-            if path:
+        if cover_urls:
+            for url in cover_urls.split(','):
+                url = url.strip()
+                if url:
+                    path = download_audio(url, tmp_dir)
+                    if path:
+                        cover_paths.append(path)
+                    else:
+                        print(f"[WARNING] Skipped failed cover: {url}")
+        if cover_files:
+            for file in cover_files:
+                path = os.path.join(tmp_dir, f"cover_{uuid.uuid4()}.wav")
+                with open(path, "wb") as f:
+                    f.write(await file.read())
                 cover_paths.append(path)
-            else:
-                print(f"[WARNING] Skipped failed cover: {url}")
 
         if not cover_paths:
-            raise HTTPException(status_code=400, detail="No valid cover songs were downloaded.")
+            raise HTTPException(status_code=400, detail="No valid cover songs were provided.")
 
         output_path = align_and_mix(original_path, cover_paths)
         print(f"[INFO] Choir mix completed: {output_path}")
