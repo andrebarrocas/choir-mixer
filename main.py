@@ -22,7 +22,7 @@ app.add_middleware(
 )
 
 # Load Whisper model once
-whisper_model = whisper.load_model("base")  # Change to "medium" or "large" if needed
+whisper_model = whisper.load_model("base")  # Change to "medium" or "large" for better accuracy
 
 def download_audio(url, output_dir):
     out_path = os.path.join(output_dir, f"{uuid.uuid4()}.%(ext)s")
@@ -155,7 +155,7 @@ def extract_lyrics(file_path):
 
 @app.post("/extract_lyrics/")
 async def extract_lyrics_endpoint(request: Request):
-    print("[INFO] Received request to extract lyrics")
+    print("[INFO] Received request to extract lyrics from audio")
     form = await request.form()
     file = form.get("audio_file")
 
