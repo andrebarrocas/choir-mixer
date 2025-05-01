@@ -12,10 +12,9 @@ import uuid
 
 app = FastAPI()
 
-# Enable CORS for local frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For production, specify allowed origins
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,8 +31,6 @@ def download_audio(url, output_dir):
     try:
         result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         print(result.stdout.decode())
-
-        # Resolve actual output file
         expected_file = out_path.replace('%(ext)s', 'wav')
         if os.path.exists(expected_file):
             print(f"[INFO] Audio downloaded: {expected_file}")
@@ -46,20 +43,31 @@ def download_audio(url, output_dir):
         print(e.stderr.decode())
         return None
 
+def trim_to_first_onset(y, sr):
+    onset_frames = librosa.onset.onset_detect(y=y, sr=sr, backtrack=True)
+    if len(onset_frames) == 0:
+        return y
+    onset_sample = librosa.frames_to_samples(onset_frames[0])
+    return y[onset_sample:]
+
 def align_and_mix(original_path, cover_paths):
     print("[INFO] Loading original audio...")
     y_orig, sr = librosa.load(original_path, sr=None)
     y_orig = librosa.to_mono(y_orig)
+    y_orig = trim_to_first_onset(y_orig, sr)  # Trim original to first onset
     mix = np.copy(y_orig)
 
     for cover_path in cover_paths:
         print(f"[INFO] Processing cover: {cover_path}")
         y_cover, _ = librosa.load(cover_path, sr=sr)
         y_cover = librosa.to_mono(y_cover)
+        y_cover = trim_to_first_onset(y_cover, sr)  # Trim cover to first onset
 
+        # Normalize cover
         if np.max(np.abs(y_cover)) > 0:
             y_cover = y_cover / np.max(np.abs(y_cover))
 
+        # Align lengths
         if len(y_cover) > len(y_orig):
             y_cover = y_cover[:len(y_orig)]
         elif len(y_cover) < len(y_orig):
@@ -67,7 +75,7 @@ def align_and_mix(original_path, cover_paths):
 
         mix += y_cover
 
-    mix = mix / np.max(np.abs(mix))
+    mix = mix / np.max(np.abs(mix))  # Normalize final mix
     out_path = os.path.join(mkdtemp(), "choir_mix.wav")
     print(f"[INFO] Saving mixed audio to: {out_path}")
     sf.write(out_path, mix, sr)
@@ -80,12 +88,8 @@ async def generate_choir(request: Request):
     print(f"[INFO] Created temp directory: {tmp_dir}")
     try:
         form = await request.form()
-
-        # Extract text fields
         original_url = form.get("original_url")
         cover_urls = form.get("cover_urls")
-
-        # Extract file fields
         original_file = form.get("original_file")
         cover_files = form.getlist("cover_files")
 
