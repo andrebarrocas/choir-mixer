@@ -9,6 +9,7 @@ import soundfile as sf
 from tempfile import mkdtemp
 import shutil
 import uuid
+import whisper
 
 app = FastAPI()
 
@@ -19,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Load Whisper model once
+whisper_model = whisper.load_model("base")  # Change to "medium" or "large" if needed
 
 def download_audio(url, output_dir):
     out_path = os.path.join(output_dir, f"{uuid.uuid4()}.%(ext)s")
@@ -54,20 +58,18 @@ def align_and_mix(original_path, cover_paths):
     print("[INFO] Loading original audio...")
     y_orig, sr = librosa.load(original_path, sr=None)
     y_orig = librosa.to_mono(y_orig)
-    y_orig = trim_to_first_onset(y_orig, sr)  # Trim original to first onset
+    y_orig = trim_to_first_onset(y_orig, sr)
     mix = np.copy(y_orig)
 
     for cover_path in cover_paths:
         print(f"[INFO] Processing cover: {cover_path}")
         y_cover, _ = librosa.load(cover_path, sr=sr)
         y_cover = librosa.to_mono(y_cover)
-        y_cover = trim_to_first_onset(y_cover, sr)  # Trim cover to first onset
+        y_cover = trim_to_first_onset(y_cover, sr)
 
-        # Normalize cover
         if np.max(np.abs(y_cover)) > 0:
             y_cover = y_cover / np.max(np.abs(y_cover))
 
-        # Align lengths
         if len(y_cover) > len(y_orig):
             y_cover = y_cover[:len(y_orig)]
         elif len(y_cover) < len(y_orig):
@@ -75,7 +77,7 @@ def align_and_mix(original_path, cover_paths):
 
         mix += y_cover
 
-    mix = mix / np.max(np.abs(mix))  # Normalize final mix
+    mix = mix / np.max(np.abs(mix))
     out_path = os.path.join(mkdtemp(), "choir_mix.wav")
     print(f"[INFO] Saving mixed audio to: {out_path}")
     sf.write(out_path, mix, sr)
@@ -137,6 +139,40 @@ def get_audio(path: str):
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="File not found.")
     return FileResponse(path, media_type="audio/wav", filename="choir_mix.wav")
+
+def extract_lyrics(file_path):
+    print(f"[INFO] Transcribing {file_path} using Whisper")
+    result = whisper_model.transcribe(file_path)
+    segments = result.get("segments", [])
+    lyrics = []
+    for seg in segments:
+        lyrics.append({
+            "start": round(seg["start"], 2),
+            "end": round(seg["end"], 2),
+            "text": seg["text"].strip()
+        })
+    return lyrics
+
+@app.post("/extract_lyrics/")
+async def extract_lyrics_endpoint(request: Request):
+    print("[INFO] Received request to extract lyrics")
+    form = await request.form()
+    file = form.get("audio_file")
+
+    if not file:
+        raise HTTPException(status_code=400, detail="No audio file provided")
+
+    tmp_dir = mkdtemp()
+    try:
+        path = os.path.join(tmp_dir, f"{uuid.uuid4()}.wav")
+        with open(path, "wb") as f:
+            f.write(await file.read())
+
+        lyrics_data = extract_lyrics(path)
+        return {"lyrics": lyrics_data}
+
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 if __name__ == "__main__":
     import uvicorn
