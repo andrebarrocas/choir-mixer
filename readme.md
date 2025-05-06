@@ -63,10 +63,24 @@ npm run dev
 ```
 
 ### Testing the Application
+**Option 1 – Upload the songs**  
 1. **Access the Application:**
 
    Open your browser and navigate to [http://localhost:5173](http://localhost:5173).
 
+2. **Upload the songs from the `songs` folder:**  
+   You can find the `songs` folder included with this project. It contains sample songs intended for testing purposes. Please upload these files to generate the choir mix.
+
+3. **Generate Choir Mix:**
+   
+   Click the "Generate Choir Mix" button. The application will process the inputs and, upon completion, provide an audio player to listen to the mixed result.
+
+**Option 2 – YouTube Links**  
+Please note that YouTube may occasionally display permission or access errors.
+
+1. **Access the Application:**
+
+   Open your browser and navigate to [http://localhost:5173](http://localhost:5173).
 2. **Input the Original Song URL:**
 
    In the "Original YouTube URL" field, enter:
@@ -80,7 +94,7 @@ npm run dev
    In the "Cover YouTube URLs" field, enter the following URLs, separated by commas:
 
    ```
-   https://www.youtube.com/watch?v=w4HK6faLpck, https://www.youtube.com/watch?v=rEIRHVcjE6o, https://www.youtube.com/watch?v=s3TwtZxpxwo
+   https://www.youtube.com/watch?v=w4HK6faLpck, https://www.youtube.com/watch?v=rEIRHVcjE6o
    ```
 
 4. **Generate Choir Mix:**
